@@ -7,6 +7,23 @@ from pylsl import StreamInfo, StreamOutlet
 import pylsl
 from dotenv import load_dotenv
 import os
+from utilities import * 
+
+import psycopg2
+
+# load .env environment variables
+load_dotenv('.env')
+
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+UI_HOST = os.getenv("UI_HOST")
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+SOCKET_SERVER_URL = os.getenv("SOCKET_SERVER_URL")
+eeg_cols = ["event_time","unix_timestamp","lsl_timestamp","round_id", "player_id", "labels", "eeg_data"]
 
 # Socket.IO client to connect to remote server
 sio = socketio.Client()
@@ -99,6 +116,27 @@ class Subcribe:
         sample_obj["type"] = 'eeg'
         sample_obj["labels"] = self.eeg_labels
         sample_obj["data"] = sample
+
+        eeg_cols = ["event_time","unix_timestamp","lsl_timestamp","round_id", "player_id", "labels", "eeg_data"]
+
+        try:
+            if conn:
+                insert_row(conn,
+                schema="public",
+                table="eeg_data",
+                columns=eeg_cols,
+                data=(
+                        timestamp,
+                        time.time(),
+                        pylsl.local_clock(),
+                        self.round_id,
+                        self.player_id,
+                        self.eeg_labels,
+                        sample
+                ))
+        except Exception as e: 
+            print("Error saving to eeg_data: ", e) 
+
         try:
             if self.eeg_outlet:
                 sample_str = json.dumps(sample_obj)
@@ -125,6 +163,25 @@ class Subcribe:
         sample_obj["labels"] = self.met_labels
         sample_obj["data"] = sample
 
+        metrics_cols = ["event_time","unix_timestamp","lsl_timestamp","round_id", "player_id", "labels", "metrics_data"]
+        try:
+            if conn:
+                insert_row(conn,
+                schema="public",
+                table="metrics_data",
+                columns=metrics_cols,
+                data=(
+                        timestamp,
+                        time.time(),
+                        pylsl.local_clock(),
+                        self.round_id,
+                        self.player_id,
+                        self.met_labels,
+                        sample
+                ))
+        except Exception as e: 
+            print("Error saving to metrics_data: ", e) 
+
         try:
             if self.met_outlet:
                 sample_str = json.dumps(sample_obj)
@@ -147,8 +204,7 @@ def connect():
 
     print("[SocketIO] Connected to server")
     global sub_instance
-    CLIENT_ID = os.getenv("CLIENT_ID")
-    CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+ 
     # Please fill your application clientId and clientSecret before running script
     your_app_client_id = CLIENT_ID
     your_app_client_secret = CLIENT_SECRET
@@ -187,13 +243,30 @@ def handle_end_connection():
         sub_instance.close_connection()
         sub_instance = None
 
-
+global conn
+conn = None
 def main():
-    load_dotenv(dotenv_path='.env')
-    socket_server_url = os.getenv("SOCKET_SERVER_URL")
-    print(f"[Client] Connecting to Socket.IO server at {socket_server_url}")
-    sio.connect(socket_server_url)
+    # load_dotenv(dotenv_path='.env')
+    # socket_server_url = os.getenv("SOCKET_SERVER_URL")
+    print(f"[Client] Connecting to Socket.IO server at {SOCKET_SERVER_URL}")
+    sio.connect(SOCKET_SERVER_URL)
     # sio.wait()
+
+    # Connect database
+    try:
+        global conn
+        conn = psycopg2.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                database=DB_NAME,
+                user=DB_USER,
+                password=DB_PASSWORD
+        )
+        print("Database connected.")
+    except Exception as e:
+        print(f"Unable to establish a connection with database hosted on {DB_HOST}. Exception: {e}")
+
+
     try:
         while True:
             time.sleep(1)
