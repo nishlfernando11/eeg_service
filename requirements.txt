@@ -1,0 +1,4 @@
+websocket-client
+python-dotenv
+python-socketio==5.0.0
+pylsl=1.17.6

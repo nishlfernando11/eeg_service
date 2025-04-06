@@ -1,0 +1,6 @@
+data
+*.csv
+jsonlogs
+.env
+
+__pycache__
