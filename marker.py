@@ -1,7 +1,13 @@
 from cortex import Cortex
 import time
 import threading
+from dotenv import load_dotenv
+# import socket
+# import threading
+import time
 
+# from dotenv import load_dotenv
+import os
 class Marker():
     def __init__(self, app_client_id, app_client_secret, **kwargs):
         self.c = Cortex(app_client_id, app_client_secret, debug_mode=True, **kwargs)
@@ -189,8 +195,13 @@ class Marker():
 def main():
     
     # Please fill your application clientId and clientSecret before running script
-    your_app_client_id = ''
-    your_app_client_secret = ''
+    load_dotenv(dotenv_path='.env')
+
+    CLIENT_ID = os.getenv("CLIENT_ID")
+    CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+    # Please fill your application clientId and clientSecret before running script
+    your_app_client_id = CLIENT_ID
+    your_app_client_secret = CLIENT_SECRET
 
     m = Marker(your_app_client_id, your_app_client_secret)
 

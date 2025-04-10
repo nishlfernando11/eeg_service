@@ -23,7 +23,7 @@ UI_HOST = os.getenv("UI_HOST")
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 SOCKET_SERVER_URL = os.getenv("SOCKET_SERVER_URL")
-eeg_cols = ["event_time","unix_timestamp","lsl_timestamp","round_id", "player_id", "labels", "eeg_data"]
+eeg_cols = ["event_time","unix_timestamp","lsl_timestamp","round_id", "player_id", "uid", "labels", "eeg_data"]
 
 # Socket.IO client to connect to remote server
 sio = socketio.Client()
@@ -47,6 +47,7 @@ class Subcribe:
         self.buffer = []
         self.player_id = None
         self.round_id = None
+        self.uid = None
 
     def connect(self, headsetId=''):
         if headsetId:
@@ -57,9 +58,9 @@ class Subcribe:
         print('[Session] Ready')
         self.session_ready.set()
 
-    def start_streaming(self, player_id, round_id):
-        print(f"[Streaming] Starting for player: {player_id}, round: {round_id}")
-        self.current_metadata = {'player_id': player_id, 'round_id': round_id, 'start_time': time.time()}
+    def start_streaming(self, player_id, round_id, uid):
+        print(f"[Streaming] Starting for player: {player_id}, uid: {uid}, round: {round_id}")
+        self.current_metadata = {'player_id': player_id, 'uid': uid, 'round_id': round_id, 'start_time': time.time()}
         self.buffer = []
         self.streaming = True
         self.debug = True
@@ -72,7 +73,7 @@ class Subcribe:
         self.current_metadata['end_time'] = time.time()
         self.current_metadata['data'] = self.buffer
 
-        fname = f"jsonlogs/eeg_met_{self.current_metadata['player_id']}_round_{self.current_metadata['round_id']}.json"
+        fname = f"jsonlogs/eeg_met_{self.current_metadata['uid']}_{self.current_metadata['player_id']}_round_{self.current_metadata['round_id']}.json"
         with open(fname, 'w') as f:
             json.dump(self.current_metadata, f)
         print(f"[Saved] Data saved to {fname}")
@@ -96,8 +97,8 @@ class Subcribe:
 
         elif stream_name == 'met':
             self.met_labels = labels
-            info = StreamInfo(name='Emotiv_MET', type='Markers',
-                              channel_count=1, nominal_srate=2,
+            info = StreamInfo(name='Emotiv_MET', type='MET',
+                              channel_count=1, nominal_srate=0.1,
                               channel_format=pylsl.cf_string, source_id='emotiv')
             self.met_outlet = StreamOutlet(info)
             print('[LSL] MET outlet created')
@@ -113,11 +114,12 @@ class Subcribe:
         sample_obj["timestamp"] = timestamp
         sample_obj["player_id"] = self.player_id
         sample_obj["round_id"] = self.round_id
+        sample_obj["uid"] = self.uid
         sample_obj["type"] = 'eeg'
         sample_obj["labels"] = self.eeg_labels
         sample_obj["data"] = sample
 
-        eeg_cols = ["event_time","unix_timestamp","lsl_timestamp","round_id", "player_id", "labels", "eeg_data"]
+        eeg_cols = ["event_time","unix_timestamp","lsl_timestamp","round_id", "player_id", "uid", "labels", "eeg_data"]
 
         try:
             if conn:
@@ -131,6 +133,7 @@ class Subcribe:
                         pylsl.local_clock(),
                         self.round_id,
                         self.player_id,
+                        self.uid,
                         self.eeg_labels,
                         sample
                 ))
@@ -142,8 +145,8 @@ class Subcribe:
                 sample_str = json.dumps(sample_obj)
                 self.eeg_outlet.push_sample([sample_str], timestamp)
                 
-            print('LSL eeg data: {}'.format([sample_str]))
-            print('eeg data: {}'.format(data))
+            # print('LSL eeg data: {}'.format([sample_str]))
+            # print('eeg data: {}'.format(data))
             self.buffer.append(sample_obj)
         except Exception as e:
             print("EEG Error {}".format(e))
@@ -159,11 +162,12 @@ class Subcribe:
         sample_obj["timestamp"] = timestamp
         sample_obj["player_id"] = self.player_id
         sample_obj["round_id"] = self.round_id
+        sample_obj["uid"] = self.uid
         sample_obj["type"] = 'met'
         sample_obj["labels"] = self.met_labels
         sample_obj["data"] = sample
 
-        metrics_cols = ["event_time","unix_timestamp","lsl_timestamp","round_id", "player_id", "labels", "metrics_data"]
+        metrics_cols = ["event_time","unix_timestamp","lsl_timestamp","round_id", "player_id", "uid", "labels", "metrics_data"]
         try:
             if conn:
                 insert_row(conn,
@@ -176,6 +180,7 @@ class Subcribe:
                         pylsl.local_clock(),
                         self.round_id,
                         self.player_id,
+                        self.uid,
                         self.met_labels,
                         sample
                 ))
@@ -225,11 +230,13 @@ def handle_start_ecg(data):
     start_info = data.get('start_info')
     player_id = start_info.get('player_id')
     round_id = start_info.get('round_id')
+    uid = start_info.get('uid')
     global sub_instance
     sub_instance.player_id = player_id
     sub_instance.round_id = round_id
+    sub_instance.uid = uid
     if sub_instance:
-        sub_instance.start_streaming(player_id, round_id)
+        sub_instance.start_streaming(player_id, round_id, uid)
 
 @sio.on('stop_ecg')
 def handle_stop_ecg(data):

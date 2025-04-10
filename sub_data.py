@@ -6,6 +6,7 @@ import time
 
 # from dotenv import load_dotenv
 import os
+from cortex import Cortex
 
 class Subcribe():
     """
@@ -232,6 +233,22 @@ class Subcribe():
 # -----------------------------------------------------------
 
 
+# -----------------------------------------------------------
+
+# -----------------------------------------------------------
+# 
+# GETTING STARTED
+#   - Please reference to https://emotiv.gitbook.io/cortex-api/ first.
+#   - Connect your headset with dongle or bluetooth. You can see the headset via Emotiv Launcher
+#   - Please make sure the your_app_client_id and your_app_client_secret are set before starting running.
+#   - In the case you borrow license from others, you need to add license = "xxx-yyy-zzz" as init parameter
+# RESULT
+#   - the data labels will be retrieved at on_new_data_labels
+#   - the data will be retreived at on_new_[dataStream]_data
+# 
+# -----------------------------------------------------------
+
+
 # # Include the Subcribe class above here...
 
 # HOST = '127.0.0.1'
@@ -299,14 +316,17 @@ def main():
 
     CLIENT_ID = os.getenv("CLIENT_ID")
     CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+    LICENSE_KEY = os.getenv("LICENSE_KEY")
     # Please fill your application clientId and clientSecret before running script
     your_app_client_id = CLIENT_ID
     your_app_client_secret = CLIENT_SECRET
+    your_app_license_key = LICENSE_KEY
 
-    s = Subcribe(your_app_client_id, your_app_client_secret)
+    s = Subcribe(your_app_client_id, your_app_client_secret, license=your_app_license_key)
 
     # list data streams
-    streams = ['eeg','eq','met','pow']
+    # streams = ['eeg','eq','met','pow']
+    streams = [ 'met']
     s.start(streams)
 
     try:
