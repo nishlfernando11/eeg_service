@@ -8,7 +8,7 @@ import pylsl
 from dotenv import load_dotenv
 import os
 from utilities import * 
-
+import math
 import psycopg2
 
 # load .env environment variables
@@ -89,21 +89,22 @@ class Subcribe:
 
         if stream_name == 'eeg':
             self.eeg_labels = labels
-            info = StreamInfo(name='Emotiv_EEG', type='EEG',
-                              channel_count=1, nominal_srate=256,
-                              channel_format=pylsl.cf_string, source_id='emotiv')
-            self.eeg_outlet = StreamOutlet(info)
-            print('[LSL] EEG outlet created')
+            # info = StreamInfo(name='Emotiv_EEG', type='EEG',
+            #                   channel_count=1, nominal_srate=256,
+            #                   channel_format=pylsl.cf_string, source_id='emotiv')
+            # self.eeg_outlet = StreamOutlet(info)
+            # print('[LSL] EEG outlet created')
 
         elif stream_name == 'met':
             self.met_labels = labels
-            info = StreamInfo(name='Emotiv_MET', type='MET',
-                              channel_count=1, nominal_srate=0.1,
-                              channel_format=pylsl.cf_string, source_id='emotiv')
-            self.met_outlet = StreamOutlet(info)
-            print('[LSL] MET outlet created')
+            # info = StreamInfo(name='Emotiv_MET', type='MET',
+            #                   channel_count=1, nominal_srate=0.1,
+            #                   channel_format=pylsl.cf_string, source_id='emotiv')
+            # self.met_outlet = StreamOutlet(info)
+            # print('[LSL] MET outlet created')
 
     def on_new_eeg_data(self, *args, **kwargs):
+        # print("self.streaming ", self.streaming)
         if not self.streaming:
             return
         data = kwargs.get('data')
@@ -143,15 +144,16 @@ class Subcribe:
         try:
             if self.eeg_outlet:
                 sample_str = json.dumps(sample_obj)
-                self.eeg_outlet.push_sample([sample_str], timestamp)
+                self.eeg_outlet.push_sample([sample_str])
                 
             # print('LSL eeg data: {}'.format([sample_str]))
             # print('eeg data: {}'.format(data))
             self.buffer.append(sample_obj)
         except Exception as e:
-            print("EEG Error {}".format(e))
-
+            print("EEG Error {}".format(e))   
+    
     def on_new_met_data(self, *args, **kwargs):
+        # print("self.streaming ", self.streaming)
         if not self.streaming:
             return
         data = kwargs.get('data')
@@ -166,8 +168,11 @@ class Subcribe:
         sample_obj["type"] = 'met'
         sample_obj["labels"] = self.met_labels
         sample_obj["data"] = sample
-
+        print("org sample ", sample)
+        converted_sample = prepare_met_array(sample)
+        print("===.converted_sample ", converted_sample)
         metrics_cols = ["event_time","unix_timestamp","lsl_timestamp","round_id", "player_id", "uid", "labels", "metrics_data"]
+        
         try:
             if conn:
                 insert_row(conn,
@@ -182,7 +187,7 @@ class Subcribe:
                         self.player_id,
                         self.uid,
                         self.met_labels,
-                        sample
+                        converted_sample
                 ))
         except Exception as e: 
             print("Error saving to metrics_data: ", e) 
@@ -190,7 +195,7 @@ class Subcribe:
         try:
             if self.met_outlet:
                 sample_str = json.dumps(sample_obj)
-                self.met_outlet.push_sample([sample_str], timestamp)
+                self.met_outlet.push_sample([sample_str])
             print('met data: {}'.format(data))
             self.buffer.append(sample_obj)
         except Exception as e:
@@ -273,6 +278,19 @@ def main():
     except Exception as e:
         print(f"Unable to establish a connection with database hosted on {DB_HOST}. Exception: {e}")
 
+    try:
+        info = StreamInfo(name='Emotiv_EEG', type='EEG',
+                              channel_count=1, nominal_srate=256,
+                              channel_format=pylsl.cf_string, source_id='emotiv')
+        sub_instance.eeg_outlet = StreamOutlet(info)
+        print('[LSL] EEG outlet created')
+        info = StreamInfo(name='Emotiv_MET', type='MET',
+                              channel_count=1, nominal_srate=0.1,
+                              channel_format=pylsl.cf_string, source_id='emotiv')
+        sub_instance.met_outlet = StreamOutlet(info)
+        print('[LSL] MET outlet created')
+    except Exception as e:
+        print(f"[LSL] Exception: {e}")
 
     try:
         while True:

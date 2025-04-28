@@ -19,3 +19,15 @@ def insert_row(conn,
         # print("Inserted to DB ")
     except (Exception, psycopg2.DatabaseError) as error:
         print("DB save failed with error: ", error)
+
+
+def prepare_met_array(met_sample):
+        new = [
+            float(m) if isinstance(m, (int, float)) else
+            1.0 if m is True else
+            0.0 if m is False else
+            0.0 # for None
+            for m in met_sample
+        ]
+        print("new ", new)
+        return new
