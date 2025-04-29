@@ -230,8 +230,8 @@ def connect():
 def disconnect():
     print("[SocketIO] Disconnected from server")
 
-@sio.on('start_ecg')
-def handle_start_ecg(data):
+@sio.on('start_sensors')
+def handle_start_sensors(data):
     start_info = data.get('start_info')
     player_id = start_info.get('player_id')
     round_id = start_info.get('round_id')
@@ -243,8 +243,8 @@ def handle_start_ecg(data):
     if sub_instance:
         sub_instance.start_streaming(player_id, round_id, uid)
 
-@sio.on('stop_ecg')
-def handle_stop_ecg(data):
+@sio.on('stop_sensors')
+def handle_stop_sensors(data):
     if sub_instance:
         sub_instance.stop_streaming()
 
@@ -297,7 +297,7 @@ def main():
             time.sleep(1)
     except KeyboardInterrupt:
         print("[Main] Exiting on user interrupt.")
-        handle_stop_ecg({})
+        handle_stop_sensors({})
         handle_end_connection()
 
 
@@ -307,7 +307,7 @@ if __name__ == '__main__':
     main()
 
     if keyboard.is_pressed("esc"):
-        handle_stop_ecg({})
+        handle_stop_sensors({})
         handle_end_connection()
 
  

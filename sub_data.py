@@ -269,7 +269,7 @@ class Subcribe():
 #                 msg = conn.recv(1024).decode().strip()
 #                 print(f"[Socket] Received: {msg}")
 
-#                 if msg == "start_ecg":
+#                 if msg == "start_sensors":
 #                     if sub_instance is None:
 #                         print("[Socket] Initializing Cortex connection...")
 #                         sub_instance = Subcribe(your_app_client_id, your_app_client_secret)
@@ -277,7 +277,7 @@ class Subcribe():
 #                     else:
 #                         print("[Socket] Cortex connection already started.")
 
-#                 elif msg == "stop_ecg":
+#                 elif msg == "stop_sensors":
 #                     if sub_instance:
 #                         print("[Socket] Stopping stream...")
 #                         sub_instance.unsub(streams)
